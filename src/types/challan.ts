@@ -23,3 +23,9 @@ export interface ChallanByMonth {
   challan_date: Date;
   days_pending: number;
 }
+
+export interface RepeatOffender {
+  rc_number: string;
+  accused_name: string;
+  total_challans: number;
+}

@@ -355,7 +355,7 @@ app.get("/peak-violation-months", (req, res) => __awaiter(void 0, void 0, void 0
 //         });
 //     }
 // });
-app.get("/drivers-by-challan-value", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+app.get("/drivers-by-challan-top-5", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         // Group challans by driver and sum total amount
         const driverChallanValues = yield prisma.challan.groupBy({
@@ -529,6 +529,44 @@ app.get("/pending-duration-analysis", (req, res) => __awaiter(void 0, void 0, vo
         res.status(500).json({
             success: false,
             message: "Error fetching pending duration analysis",
+            error
+        });
+    }
+}));
+app.get("/repeat-offenders", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const { startDate, endDate } = req.query;
+        let whereCondition = {};
+        if (startDate && endDate) {
+            whereCondition.challan_date = {
+                gte: new Date(startDate),
+                lte: new Date(endDate)
+            };
+        }
+        // Find repeat offenders (drivers with more than one challan)
+        const offenders = yield prisma.challan.groupBy({
+            by: ["rc_number", "accused_name"],
+            _count: { id: true },
+            where: whereCondition,
+            having: { id: { _count: { gt: 1 } } }, // Only include drivers with more than one challan
+            orderBy: { _count: { id: "desc" } }
+        });
+        // Format response data
+        //@ts-ignore
+        const result = offenders.map(offender => ({
+            rc_number: offender.rc_number,
+            accused_name: offender.accused_name,
+            total_challans: offender._count.id
+        }));
+        res.json({
+            success: true,
+            data: result
+        });
+    }
+    catch (error) {
+        res.status(500).json({
+            success: false,
+            message: "Error fetching repeat offenders",
             error
         });
     }

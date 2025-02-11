@@ -5,7 +5,7 @@ import express from "express"
 // Load environment variables
 // dotenv.config();
 import path from "path";
-import { ChallanByMonth, PendingChallan, TruckAverage, TruckChallan } from "./types/challan";
+import { ChallanByMonth, PendingChallan, RepeatOffender, TruckAverage, TruckChallan } from "./types/challan";
 const app=express()
 //@ts-ignore
 
@@ -366,7 +366,7 @@ app.get("/peak-violation-months", async (req, res) => {
 //         });
 //     }
 // });
-app.get("/drivers-by-challan-value", async (req, res) => {
+app.get("/drivers-by-challan-top-5", async (req, res) => {
     try {
         // Group challans by driver and sum total amount
         const driverChallanValues = await prisma.challan.groupBy({
@@ -564,6 +564,49 @@ app.get("/pending-duration-analysis", async (req, res) => {
         res.status(500).json({
             success: false,
             message: "Error fetching pending duration analysis",
+            error
+        });
+    }
+});
+
+app.get("/repeat-offenders", async (req, res) => {
+    try {
+        const { startDate, endDate } = req.query;
+
+        let whereCondition: any = {};
+
+        if (startDate && endDate) {
+            whereCondition.challan_date = {
+                gte: new Date(startDate as string),
+                lte: new Date(endDate as string)
+            };
+        }
+
+        // Find repeat offenders (drivers with more than one challan)
+        const offenders = await prisma.challan.groupBy({
+            by: ["rc_number", "accused_name"],
+            _count: { id: true },
+            where: whereCondition,
+            having: { id: { _count: { gt: 1 } } }, // Only include drivers with more than one challan
+            orderBy: { _count: { id: "desc" } }
+        });
+
+        // Format response data
+        //@ts-ignore
+        const result: RepeatOffender[] = offenders.map(offender => ({
+            rc_number: offender.rc_number,
+            accused_name: offender.accused_name,
+            total_challans: offender._count.id
+        }));
+
+        res.json({
+            success: true,
+            data: result
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: "Error fetching repeat offenders",
             error
         });
     }
