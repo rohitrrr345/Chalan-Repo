@@ -192,6 +192,53 @@ app.get("/pending-challans", async (req, res) => {
         res.status(500).json({ success: false, message: "Error fetching data", error });
     }
 });
+
+
+app.get("/total-pending-finesall", async (req, res) => {
+    try {
+        // Fetch total pending amount for Court Challans
+        const courtPending = await prisma.challan.aggregate({
+            _sum: { amount: true },
+            where: { challan_status: "Pending", court_challan: true },
+        });
+console.log(courtPending)
+        // Fetch total pending amount for Online Challans
+        const onlinePending = await prisma.challan.aggregate({
+            _sum: { amount: true },
+            where: { challan_status: "Pending", court_challan: false },
+        });
+console.log(onlinePending)
+        res.json({
+            success: true,
+            total_pending_fines: {
+                court: courtPending._sum.amount || 0,
+                online: onlinePending._sum.amount || 0,
+                total: (courtPending._sum.amount || 0) + (onlinePending._sum.amount || 0)
+            }
+        });
+    } catch (error) {
+        console.error("❌ Error fetching pending fines:", error);
+        res.status(500).json({ success: false, message: "Internal Server Error" });
+    }
+});
+
+
+app.get("/total-pending-fines", async (req, res) => {
+    try {
+        const totalPendingAmount = await prisma.challan.aggregate({
+            _sum: { amount: true },
+            where: { challan_status: "Pending" },
+        });
+    console.log(totalPendingAmount)
+        // Get the total sum or default to 0 if no data
+        const totalAmount = totalPendingAmount._sum.amount || 0;
+
+        res.json({ success: true, total_pending_fines: totalAmount });
+    } catch (error) {
+        console.error("❌ Error fetching pending fines:", error);
+        res.status(500).json({ success: false, message: "Internal Server Error" });
+    }
+});
 // // ✅ API Route: Get Total Pending Challan Amount (In Courts & Online)
 app.get("/court", async (req, res) => {
 

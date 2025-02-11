@@ -196,6 +196,50 @@ app.get("/pending-challans", (req, res) => __awaiter(void 0, void 0, void 0, fun
         res.status(500).json({ success: false, message: "Error fetching data", error });
     }
 }));
+app.get("/total-pending-finesall", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        // Fetch total pending amount for Court Challans
+        const courtPending = yield prisma.challan.aggregate({
+            _sum: { amount: true },
+            where: { challan_status: "Pending", court_challan: true },
+        });
+        console.log(courtPending);
+        // Fetch total pending amount for Online Challans
+        const onlinePending = yield prisma.challan.aggregate({
+            _sum: { amount: true },
+            where: { challan_status: "Pending", court_challan: false },
+        });
+        console.log(onlinePending);
+        res.json({
+            success: true,
+            total_pending_fines: {
+                court: courtPending._sum.amount || 0,
+                online: onlinePending._sum.amount || 0,
+                total: (courtPending._sum.amount || 0) + (onlinePending._sum.amount || 0)
+            }
+        });
+    }
+    catch (error) {
+        console.error("❌ Error fetching pending fines:", error);
+        res.status(500).json({ success: false, message: "Internal Server Error" });
+    }
+}));
+app.get("/total-pending-fines", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const totalPendingAmount = yield prisma.challan.aggregate({
+            _sum: { amount: true },
+            where: { challan_status: "Pending" },
+        });
+        console.log(totalPendingAmount);
+        // Get the total sum or default to 0 if no data
+        const totalAmount = totalPendingAmount._sum.amount || 0;
+        res.json({ success: true, total_pending_fines: totalAmount });
+    }
+    catch (error) {
+        console.error("❌ Error fetching pending fines:", error);
+        res.status(500).json({ success: false, message: "Internal Server Error" });
+    }
+}));
 // // ✅ API Route: Get Total Pending Challan Amount (In Courts & Online)
 app.get("/court", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
