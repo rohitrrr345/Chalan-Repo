@@ -196,7 +196,7 @@ app.get("/pending-challans", (req, res) => __awaiter(void 0, void 0, void 0, fun
         res.status(500).json({ success: false, message: "Error fetching data", error });
     }
 }));
-app.get("/total-pending-finesall", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+app.get("/online-offline-pending-fines", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         // Fetch total pending amount for Court Challans
         const courtPending = yield prisma.challan.aggregate({
@@ -241,23 +241,6 @@ app.get("/total-pending-fines", (req, res) => __awaiter(void 0, void 0, void 0, 
     }
 }));
 // // ✅ API Route: Get Total Pending Challan Amount (In Courts & Online)
-app.get("/court", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    try {
-        const pendingChallans = yield prisma.challan.findMany({
-            where: { court_challan: true },
-        });
-        res.json({
-            success: true,
-            data: {
-                pendingChallans
-            },
-            NumberOfCourtChallans: pendingChallans.length,
-        });
-    }
-    catch (error) {
-        res.status(500).json({ success: false, message: "Error calculating total pending amount", error });
-    }
-}));
 app.get("/higest", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         // Find the challan with the highest amount
@@ -341,32 +324,6 @@ app.get("/peak-violation-months", (req, res) => __awaiter(void 0, void 0, void 0
         res.status(500).json({
             success: false,
             message: "Error fetching peak violation months",
-            error
-        });
-    }
-}));
-app.get("/top-offenders", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    try {
-        // Find drivers with the highest number of challans
-        const topOffenders = yield prisma.challan.groupBy({
-            by: ["rc_number", "accused_name"],
-            _count: { id: true },
-            orderBy: { _count: { id: "desc" } },
-            take: 5 // Limit to top 5 offenders
-        });
-        res.json({
-            success: true,
-            topOffenders: topOffenders.map(offender => ({
-                rc_number: offender.rc_number,
-                accused_name: offender.accused_name,
-                total_challans: offender._count.id
-            }))
-        });
-    }
-    catch (error) {
-        res.status(500).json({
-            success: false,
-            message: "Error fetching top offenders",
             error
         });
     }
@@ -463,6 +420,115 @@ app.get("/average-challan-per-truck", (req, res) => __awaiter(void 0, void 0, vo
         res.status(500).json({
             success: false,
             message: "Error calculating average challan amount per truck",
+            error
+        });
+    }
+}));
+app.get("/challans-by-state-city", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        // Group by State & City (Challan Place)
+        const challanCounts = yield prisma.challan.groupBy({
+            by: ["state", "challan_place"],
+            _count: {
+                id: true, // Count number of challans
+            },
+            orderBy: {
+                _count: {
+                    id: "desc", // Sort by highest violations
+                },
+            },
+        });
+        res.json({
+            success: true,
+            violation_hotspots: challanCounts.map((entry) => ({
+                state: entry.state,
+                city: entry.challan_place,
+                total_challans: entry._count.id,
+            })),
+        });
+    }
+    catch (error) {
+        console.error("❌ Error fetching violation hotspots:", error);
+        res.status(500).json({ success: false, message: "Internal Server Error" });
+    }
+}));
+app.get("/challans-by-month", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        // Fetch all challans with date
+        const challans = yield prisma.challan.findMany({
+            select: {
+                challan_date: true
+            }
+        });
+        // Group challans by Month/Year
+        const monthlyChallans = {};
+        challans.forEach(({ challan_date }) => {
+            if (!challan_date)
+                return; // Skip if date is missing
+            const date = new Date(challan_date);
+            const year = date.getFullYear();
+            const month = date.toLocaleString("en-US", { month: "long" });
+            const key = `${month}-${year}`; // Format as "January-2024"
+            if (!monthlyChallans[key]) {
+                monthlyChallans[key] = { month, year, total_challans: 0 };
+            }
+            monthlyChallans[key].total_challans += 1;
+        });
+        // Convert object to sorted array (oldest to newest)
+        const sortedData = Object.values(monthlyChallans)
+            .sort((a, b) => new Date(`${a.year}-${a.month}-01`).getTime() - new Date(`${b.year}-${b.month}-01`).getTime());
+        res.json({
+            success: true,
+            data: sortedData
+        });
+    }
+    catch (error) {
+        res.status(500).json({
+            success: false,
+            message: "Error fetching challans by month/year",
+            error
+        });
+    }
+}));
+app.get("/pending-duration-analysis", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        // Fetch all pending challans
+        const pendingChallans = yield prisma.challan.findMany({
+            where: { challan_status: "Pending" },
+            select: {
+                rc_number: true,
+                accused_name: true,
+                challan_number: true,
+                challan_date: true
+            }
+        });
+        // Get current date
+        const today = new Date();
+        // Process each challan and calculate days pending
+        //@ts-ignore
+        const result = pendingChallans.map(challan => {
+            //@ts-ignore
+            const challanDate = new Date(challan.challan_date);
+            const daysPending = Math.floor((today.getTime() - challanDate.getTime()) / (1000 * 60 * 60 * 24)); // Convert ms to days
+            return {
+                rc_number: challan.rc_number,
+                accused_name: challan.accused_name,
+                challan_number: challan.challan_number,
+                challan_date: challan.challan_date,
+                days_pending: daysPending
+            };
+        });
+        // Sort by longest pending duration
+        result.sort((a, b) => b.days_pending - a.days_pending);
+        res.json({
+            success: true,
+            data: result
+        });
+    }
+    catch (error) {
+        res.status(500).json({
+            success: false,
+            message: "Error fetching pending duration analysis",
             error
         });
     }
