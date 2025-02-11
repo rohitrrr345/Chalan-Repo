@@ -1,0 +1,16 @@
+-- AlterTable
+ALTER TABLE "Challan" ALTER COLUMN "rc_number" DROP NOT NULL,
+ALTER COLUMN "challan_number" DROP NOT NULL,
+ALTER COLUMN "offense_details" DROP NOT NULL,
+ALTER COLUMN "challan_place" DROP NOT NULL,
+ALTER COLUMN "challan_date" DROP NOT NULL,
+ALTER COLUMN "state" DROP NOT NULL,
+ALTER COLUMN "rto" DROP NOT NULL,
+ALTER COLUMN "accused_name" DROP NOT NULL,
+ALTER COLUMN "amount" DROP NOT NULL,
+ALTER COLUMN "challan_status" DROP NOT NULL,
+ALTER COLUMN "challan_date_time" DROP NOT NULL,
+ALTER COLUMN "upstream_code" DROP NOT NULL,
+ALTER COLUMN "court_challan" DROP NOT NULL,
+ALTER COLUMN "comment" DROP NOT NULL,
+ALTER COLUMN "state_name" DROP NOT NULL;
