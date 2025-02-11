@@ -25,7 +25,7 @@ model Challan {
   state String?
   rto String?
   accused_name String?
-  amount String?
+  amount Int?
   challan_status String?
   challan_date_time String?
   upstream_code String?
