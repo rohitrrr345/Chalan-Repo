@@ -516,10 +516,6 @@ app.get("/challans-by-month", async (req, res) => {
         });
     }
 });
-
-
-
-
 app.get("/pending-duration-analysis", async (req, res) => {
     try {
         // Fetch all pending challans
@@ -607,6 +603,43 @@ app.get("/repeat-offenders", async (req, res) => {
         res.status(500).json({
             success: false,
             message: "Error fetching repeat offenders",
+            error
+        });
+    }
+});
+app.get("/challans-by-vehicle/:rc_number", async (req, res) => {
+    try {
+        const { rc_number } = req.params;
+
+        if (!rc_number) {
+            return res.status(400).json({
+                success: false,
+                message: "Vehicle registration number (rc_number) is required."
+            });
+        }
+
+        // Fetch all challans for the given vehicle registration number
+        const challans = await prisma.challan.findMany({
+            where: { rc_number },
+            select: {
+                challan_number: true,
+                accused_name: true,
+                offense_details: true,
+                challan_date: true,
+                amount: true,
+                challan_status: true
+            },
+            orderBy: { challan_date: "desc" } // Sort by latest first
+        });
+
+        res.json({
+            success: true,
+            data: challans
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: "Error fetching challans by vehicle registration number",
             error
         });
     }

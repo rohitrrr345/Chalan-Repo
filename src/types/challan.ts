@@ -29,3 +29,11 @@ export interface RepeatOffender {
   accused_name: string;
   total_challans: number;
 }
+  export interface ChallanDetails {
+  challan_number: string;
+  accused_name: string;
+  offense_details: string;
+  challan_date: Date;
+  amount: number;
+  challan_status: string;
+}
