@@ -46,10 +46,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const client_1 = require("@prisma/client");
-// import * as XLSX from "xlsx";
-// import { PrismaClient } from "@prisma/client";
 const XLSX = __importStar(require("xlsx"));
-// import dotenv from "dotenv";
 // Load environment variables
 // dotenv.config();
 const path_1 = __importDefault(require("path"));
@@ -104,12 +101,11 @@ function excelSerialToJSDateTime(serial) {
 const prisma = new client_1.PrismaClient();
 function importExcelData() {
     return __awaiter(this, void 0, void 0, function* () {
-        var _a, _b, _c, _d;
         try {
             // Load the Excel file
             const filePath = path_1.default.join(process.cwd(), "data.xlsx");
             console.log(filePath, "file path");
-            const workbook = XLSX.readFile("C:\\Users\\Lenovo\\Desktop\\Copy\\Challan\\src\\data.xlsx"); // Replace with your Excel file
+            const workbook = XLSX.readFile("C:\\Users\\Lenovo\\Desktop\\Copy\\data.xlsx"); // Replace with your Excel file
             const sheetName = workbook.SheetNames[2]; // Get first sheet
             const sheet = workbook.Sheets[sheetName];
             // Convert sheet data to JSON
@@ -121,36 +117,36 @@ function importExcelData() {
             }));
             let count = 0;
             // Create a new Challan entry
-            for (const entry of jsonData) {
-                count++;
-                console.log(count, "entry");
-                yield prisma.challan.create({
-                    data: {
-                        rc_number: entry === null || entry === void 0 ? void 0 : entry.rc_number,
-                        chassis_number: (_a = entry === null || entry === void 0 ? void 0 : entry.chassis_number) === null || _a === void 0 ? void 0 : _a.toString(),
-                        challan_number: entry === null || entry === void 0 ? void 0 : entry.challan_number.toString(),
-                        offense_details: entry === null || entry === void 0 ? void 0 : entry.offense_details,
-                        challan_place: entry === null || entry === void 0 ? void 0 : entry.challan_place,
-                        //@ts-ignore
-                        challan_date: (entry === null || entry === void 0 ? void 0 : entry.challan_date) ? excelSerialToJSDate(entry === null || entry === void 0 ? void 0 : entry.challan_date).toString() : "null",
-                        state: entry === null || entry === void 0 ? void 0 : entry.state,
-                        rto: entry === null || entry === void 0 ? void 0 : entry.rto,
-                        accused_name: entry === null || entry === void 0 ? void 0 : entry.accused_name,
-                        amount: (_b = entry.amount) === null || _b === void 0 ? void 0 : _b.toString(),
-                        challan_status: entry === null || entry === void 0 ? void 0 : entry.challan_status,
-                        //@ts-ignore
-                        challan_date_time: (entry === null || entry === void 0 ? void 0 : entry.challan_date_time) ? excelSerialToJSDateTime(entry.challan_date_time).toString() : "null",
-                        upstream_code: (_c = entry === null || entry === void 0 ? void 0 : entry.upstream_code) === null || _c === void 0 ? void 0 : _c.toString(),
-                        court_challan: entry === null || entry === void 0 ? void 0 : entry.court_challan,
-                        comment: (_d = entry === null || entry === void 0 ? void 0 : entry.comment) === null || _d === void 0 ? void 0 : _d.toString(),
-                        //@ts-ignore
-                        state_name: entry["State Name"].toString()
-                    },
-                });
-            }
+            // for (const entry of jsonData) {
+            //     count++;
+            //     console.log(count,"entry");
+            //     await prisma.challan.create({
+            //         data: {
+            //             rc_number: entry?.rc_number,
+            //             chassis_number: entry?.chassis_number?.toString(),
+            //             challan_number: entry?.challan_number.toString(),
+            //             offense_details: entry?.offense_details,
+            //             challan_place: entry?.challan_place,
+            //             //@ts-ignore
+            //             challan_date: entry?.challan_date ?excelSerialToJSDate(entry?.challan_date).toString(): "null",         
+            //             state: entry?.state,
+            //             rto: entry?.rto,
+            //             accused_name: entry?.accused_name,
+            //             amount: entry.amount?.toString(),
+            //             challan_status: entry?.challan_status,
+            //             //@ts-ignore
+            //             challan_date_time: entry?.challan_date_time ? excelSerialToJSDateTime(entry.challan_date_time).toString() : "null",
+            //             upstream_code: entry?.upstream_code?.toString(),
+            //             court_challan: entry?.court_challan,
+            //             comment: entry?.comment?.toString(),
+            //             //@ts-ignore
+            //             state_name: entry["State Name"].toString()
+            //         },
+            //     });
+            // }
             // await prisma.challan.deleteMany();
-            const value = excelSerialToJSDate(45620);
-            console.log(value);
+            // const value=excelSerialToJSDate(45620)
+            // console.log(value)
             console.log("✅ Data successfully imported!");
         }
         catch (err) {

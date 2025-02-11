@@ -96,7 +96,7 @@ async function importExcelData() {
         // Load the Excel file
         const filePath = path.join(process.cwd(), "data.xlsx");
 console.log(filePath,"file path")   
-        const workbook = XLSX.readFile("C:\\Users\\Lenovo\\Desktop\\Copy\\Challan\\src\\data.xlsx"); // Replace with your Excel file
+        const workbook = XLSX.readFile("C:\\Users\\Lenovo\\Desktop\\Copy\\data.xlsx"); // Replace with your Excel file
         const sheetName = workbook.SheetNames[2]; // Get first sheet
         const sheet = workbook.Sheets[sheetName]
      
