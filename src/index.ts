@@ -106,7 +106,7 @@ async function importExcelData() {
 }
 
 // Run the function
-importExcelData();
+// importExcelData();
 
 app.get("/pending-challans", async (req, res) => {
     try {
@@ -221,7 +221,6 @@ app.get("/topstates-with-most-challans", async (req, res) => {
         });
     }
 });
-
 app.get("/peak-violation-months", async (req, res) => {
     try {
         // Group challans by month and count occurrences
