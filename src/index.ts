@@ -2,79 +2,9 @@ import { PrismaClient } from "@prisma/client";
 import * as XLSX from "xlsx";
 import express from "express"
 
-// Load environment variables
-// dotenv.config();
 import path from "path";
 import { ChallanByMonth, PendingChallan, PendingChallanStats, RepeatOffender, TruckAverage, TruckChallan } from "./types/challan";
-const app=express()
-//@ts-ignore
-
-function excelSerialToJSDate(serial) {
-    if (!serial || isNaN(serial)) return null; // Handle missing/invalid values
-
-    // Convert Excel serial number to milliseconds
-    const excelEpoch = new Date(1900, 0, 1);
-    const milliseconds = (serial - 1) * 86400000; // Convert days to ms
-
-    // Fix Excel leap year bug (Excel incorrectly includes Feb 29, 1900)
-    let finalDate = new Date(excelEpoch.getTime() + milliseconds);
-    if (serial >= 60) {
-        finalDate.setDate(finalDate.getDate() - 1);
-    }
-
-    // Format the date as MM/DD/YYYY
-    const formattedDate = `${
-        (finalDate.getMonth() + 1).toString().padStart(2, "0") // Month (1-based)
-    }/${
-        finalDate.getDate().toString().padStart(2, "0") // Day
-    }/${
-        finalDate.getFullYear() // Year
-    }`;
-
-    return formattedDate;
-}
-
-//@ts-ignore
-function excelSerialToJSDateTime(serial) {
-    if (!serial || isNaN(serial)) return null; // Handle missing/invalid values
-
-    // Convert Excel serial number to milliseconds
-    const excelEpoch = new Date(1900, 0, 1);
-    const milliseconds = (serial - 1) * 86400000; // Convert days to ms
-
-    // Fix Excel leap year bug (Excel incorrectly includes Feb 29, 1900)
-    let finalDate = new Date(excelEpoch.getTime() + milliseconds);
-    if (serial >= 60) {
-        finalDate.setDate(finalDate.getDate() - 1);
-    }
-
-    // Convert fractional part to hours, minutes, seconds
-    const timeFraction = serial % 1; // Extract decimal part (time)
-    const hours = Math.floor(timeFraction * 24);
-    const minutes = Math.floor((timeFraction * 1440) % 60);
-    const seconds = Math.floor((timeFraction * 86400) % 60);
-
-    // Set time on the final date
-    finalDate.setHours(hours, minutes, seconds);
-
-    // Format the date as MM/DD/YYYY HH:MM:SS
-    const formattedDate = `${
-        (finalDate.getMonth() + 1).toString().padStart(2, "0") // Month (1-based)
-    }/${
-        finalDate.getDate().toString().padStart(2, "0") // Day
-    }/${
-        finalDate.getFullYear() // Year
-    } ${
-        finalDate.getHours().toString().padStart(2, "0") // Hours
-    }:${
-        finalDate.getMinutes().toString().padStart(2, "0") // Minutes
-    }:${
-        finalDate.getSeconds().toString().padStart(2, "0") // Seconds
-    }`;
-
-    return formattedDate;
-}
-
+const app = express()
 const prisma = new PrismaClient();
 
 async function fetchPendingChallans() {
@@ -117,13 +47,13 @@ async function importExcelData() {
     try {
         // Load the Excel file
         const filePath = path.join(process.cwd(), "data.xlsx");
-console.log(filePath,"file path")   
+        console.log(filePath, "file path")
         const workbook = XLSX.readFile("C:\\Users\\Lenovo\\Desktop\\Copy\\data.xlsx"); // Replace with your Excel file
         const sheetName = workbook.SheetNames[2]; // Get first sheet
         const sheet = workbook.Sheets[sheetName]
-     
+
         // Convert sheet data to JSON
-        const jsonData:ChallanEntry[] = XLSX.utils.sheet_to_json(sheet);
+        const jsonData: ChallanEntry[] = XLSX.utils.sheet_to_json(sheet);
 
         // console.log(jsonData,"json data");
         // Loop through each row in the sheet
@@ -132,7 +62,7 @@ console.log(filePath,"file path")
         // });
 
         let count = 0;
-            // Create a new Challan entry
+        // Create a new Challan entry
         // for (const entry of jsonData) {
         //     count++;
         //     console.log(count,"entry");
@@ -165,8 +95,8 @@ console.log(filePath,"file path")
 
 
 
-// const value=excelSerialToJSDate(45620)
-// console.log(value)
+        // const value=excelSerialToJSDate(45620)
+        // console.log(value)
         console.log("✅ Data successfully imported!");
     } catch (err) {
         console.error("❌ Error importing data:", err);
@@ -184,9 +114,10 @@ app.get("/pending-challans", async (req, res) => {
             where: { challan_status: "Pending" },
         });
 
-        res.json({ success: true,
+        res.json({
+            success: true,
             NumberOfPendingChallans: pendingChallans.length,
-            data: pendingChallans,   
+            data: pendingChallans,
         });
     } catch (error) {
         res.status(500).json({ success: false, message: "Error fetching data", error });
@@ -201,13 +132,13 @@ app.get("/online-offline-pending-fines", async (req, res) => {
             _sum: { amount: true },
             where: { challan_status: "Pending", court_challan: true },
         });
-console.log(courtPending)
+        console.log(courtPending)
         // Fetch total pending amount for Online Challans
         const onlinePending = await prisma.challan.aggregate({
             _sum: { amount: true },
             where: { challan_status: "Pending", court_challan: false },
         });
-console.log(onlinePending)
+        console.log(onlinePending)
         res.json({
             success: true,
             total_pending_fines: {
@@ -229,7 +160,7 @@ app.get("/total-pending-fines-sum", async (req, res) => {
             _sum: { amount: true },
             where: { challan_status: "Pending" },
         });
-    console.log(totalPendingAmount)
+        console.log(totalPendingAmount)
         // Get the total sum or default to 0 if no data
         const totalAmount = totalPendingAmount._sum.amount || 0;
 
@@ -239,8 +170,6 @@ app.get("/total-pending-fines-sum", async (req, res) => {
         res.status(500).json({ success: false, message: "Internal Server Error" });
     }
 });
-// // ✅ API Route: Get Total Pending Challan Amount (In Courts & Online)
-
 
 app.get("/higest-challan-lowest-challan", async (req, res) => {
     try {
@@ -415,7 +344,7 @@ app.get("/average-challan-per-truck", async (req, res) => {
             truckTotals[rc_number].totalAmount += amount; // Sum amounts (Integer)
             truckTotals[rc_number].count += 1; // Count occurrences
         });
-         console.log(truckTotals)
+        console.log(truckTotals)
         // Convert data into a sorted array with average calculation
         const sortedTrucks: TruckAverage[] = Object.values(truckTotals)
             .map(truck => ({
@@ -528,7 +457,7 @@ app.get("/pending-duration-analysis", async (req, res) => {
         // Process each challan and calculate days pending
         //@ts-ignore
         const result: PendingChallan[] = pendingChallans.map(challan => {
-                    //@ts-ignore
+            //@ts-ignore
 
             const challanDate = new Date(challan.challan_date);
             const daysPending = Math.floor((today.getTime() - challanDate.getTime()) / (1000 * 60 * 60 * 24)); // Convert ms to days
@@ -538,7 +467,7 @@ app.get("/pending-duration-analysis", async (req, res) => {
                 accused_name: challan.accused_name,
                 challan_number: challan.challan_number,
                 challan_date: challan.challan_date,
-                days_pending:  daysPending
+                days_pending: daysPending
             };
         });
 
@@ -680,4 +609,4 @@ app.get("/challan-pending-percentage", async (req, res) => {
 
 app.listen(3000, () => {
     console.log(`Server is running on port ${3000}`);
-  });
+});

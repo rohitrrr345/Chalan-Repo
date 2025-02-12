@@ -48,58 +48,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const client_1 = require("@prisma/client");
 const XLSX = __importStar(require("xlsx"));
 const express_1 = __importDefault(require("express"));
-// Load environment variables
-// dotenv.config();
 const path_1 = __importDefault(require("path"));
 const app = (0, express_1.default)();
-//@ts-ignore
-function excelSerialToJSDate(serial) {
-    if (!serial || isNaN(serial))
-        return null; // Handle missing/invalid values
-    // Convert Excel serial number to milliseconds
-    const excelEpoch = new Date(1900, 0, 1);
-    const milliseconds = (serial - 1) * 86400000; // Convert days to ms
-    // Fix Excel leap year bug (Excel incorrectly includes Feb 29, 1900)
-    let finalDate = new Date(excelEpoch.getTime() + milliseconds);
-    if (serial >= 60) {
-        finalDate.setDate(finalDate.getDate() - 1);
-    }
-    // Format the date as MM/DD/YYYY
-    const formattedDate = `${(finalDate.getMonth() + 1).toString().padStart(2, "0") // Month (1-based)
-    }/${finalDate.getDate().toString().padStart(2, "0") // Day
-    }/${finalDate.getFullYear() // Year
-    }`;
-    return formattedDate;
-}
-//@ts-ignore
-function excelSerialToJSDateTime(serial) {
-    if (!serial || isNaN(serial))
-        return null; // Handle missing/invalid values
-    // Convert Excel serial number to milliseconds
-    const excelEpoch = new Date(1900, 0, 1);
-    const milliseconds = (serial - 1) * 86400000; // Convert days to ms
-    // Fix Excel leap year bug (Excel incorrectly includes Feb 29, 1900)
-    let finalDate = new Date(excelEpoch.getTime() + milliseconds);
-    if (serial >= 60) {
-        finalDate.setDate(finalDate.getDate() - 1);
-    }
-    // Convert fractional part to hours, minutes, seconds
-    const timeFraction = serial % 1; // Extract decimal part (time)
-    const hours = Math.floor(timeFraction * 24);
-    const minutes = Math.floor((timeFraction * 1440) % 60);
-    const seconds = Math.floor((timeFraction * 86400) % 60);
-    // Set time on the final date
-    finalDate.setHours(hours, minutes, seconds);
-    // Format the date as MM/DD/YYYY HH:MM:SS
-    const formattedDate = `${(finalDate.getMonth() + 1).toString().padStart(2, "0") // Month (1-based)
-    }/${finalDate.getDate().toString().padStart(2, "0") // Day
-    }/${finalDate.getFullYear() // Year
-    } ${finalDate.getHours().toString().padStart(2, "0") // Hours
-    }:${finalDate.getMinutes().toString().padStart(2, "0") // Minutes
-    }:${finalDate.getSeconds().toString().padStart(2, "0") // Seconds
-    }`;
-    return formattedDate;
-}
 const prisma = new client_1.PrismaClient();
 function fetchPendingChallans() {
     return __awaiter(this, void 0, void 0, function* () {
@@ -187,7 +137,8 @@ app.get("/pending-challans", (req, res) => __awaiter(void 0, void 0, void 0, fun
         const pendingChallans = yield prisma.challan.findMany({
             where: { challan_status: "Pending" },
         });
-        res.json({ success: true,
+        res.json({
+            success: true,
             NumberOfPendingChallans: pendingChallans.length,
             data: pendingChallans,
         });
@@ -240,7 +191,6 @@ app.get("/total-pending-fines-sum", (req, res) => __awaiter(void 0, void 0, void
         res.status(500).json({ success: false, message: "Internal Server Error" });
     }
 }));
-// // ✅ API Route: Get Total Pending Challan Amount (In Courts & Online)
 app.get("/higest-challan-lowest-challan", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         // Find the challan with the highest amount
