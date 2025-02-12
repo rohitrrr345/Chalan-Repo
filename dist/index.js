@@ -224,7 +224,7 @@ app.get("/online-offline-pending-fines", (req, res) => __awaiter(void 0, void 0,
         res.status(500).json({ success: false, message: "Internal Server Error" });
     }
 }));
-app.get("/total-pending-fines", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+app.get("/total-pending-fines-sum", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const totalPendingAmount = yield prisma.challan.aggregate({
             _sum: { amount: true },
@@ -241,7 +241,7 @@ app.get("/total-pending-fines", (req, res) => __awaiter(void 0, void 0, void 0, 
     }
 }));
 // // ✅ API Route: Get Total Pending Challan Amount (In Courts & Online)
-app.get("/higest", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+app.get("/higest-challan-lowest-challan", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         // Find the challan with the highest amount
         const highestChallan = yield prisma.challan.findFirst({
@@ -265,7 +265,7 @@ app.get("/higest", (req, res) => __awaiter(void 0, void 0, void 0, function* () 
         });
     }
 }));
-app.get("/topstates", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+app.get("/topstates-with-most-challans", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         // Find the top 5 states with the most challans
         const topStates = yield prisma.challan.groupBy({
@@ -567,6 +567,42 @@ app.get("/repeat-offenders", (req, res) => __awaiter(void 0, void 0, void 0, fun
         res.status(500).json({
             success: false,
             message: "Error fetching repeat offenders",
+            error
+        });
+    }
+}));
+//@ts-ignore
+app.get("/challans-by-vehicle/:rc_number", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const { rc_number } = req.params;
+        if (!rc_number) {
+            return res.status(400).json({
+                success: false,
+                message: "Vehicle registration number (rc_number) is required."
+            });
+        }
+        // Fetch all challans for the given vehicle registration number
+        const challans = yield prisma.challan.findMany({
+            where: { rc_number },
+            select: {
+                challan_number: true,
+                accused_name: true,
+                offense_details: true,
+                challan_date: true,
+                amount: true,
+                challan_status: true
+            },
+            orderBy: { challan_date: "desc" } // Sort by latest first
+        });
+        res.json({
+            success: true,
+            data: challans
+        });
+    }
+    catch (error) {
+        res.status(500).json({
+            success: false,
+            message: "Error fetching challans by vehicle registration number",
             error
         });
     }

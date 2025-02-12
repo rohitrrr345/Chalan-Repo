@@ -223,7 +223,7 @@ console.log(onlinePending)
 });
 
 
-app.get("/total-pending-fines", async (req, res) => {
+app.get("/total-pending-fines-sum", async (req, res) => {
     try {
         const totalPendingAmount = await prisma.challan.aggregate({
             _sum: { amount: true },
@@ -242,7 +242,7 @@ app.get("/total-pending-fines", async (req, res) => {
 // // ✅ API Route: Get Total Pending Challan Amount (In Courts & Online)
 
 
-app.get("/higest", async (req, res) => {
+app.get("/higest-challan-lowest-challan", async (req, res) => {
     try {
         // Find the challan with the highest amount
         const highestChallan = await prisma.challan.findFirst({
@@ -267,7 +267,7 @@ app.get("/higest", async (req, res) => {
         });
     }
 });
-app.get("/topstates", async (req, res) => {
+app.get("/topstates-with-most-challans", async (req, res) => {
     try {
         // Find the top 5 states with the most challans
         const topStates = await prisma.challan.groupBy({
@@ -392,10 +392,6 @@ app.get("/drivers-by-challan-top-5", async (req, res) => {
         });
     }
 });
-
-
-
-
 app.get("/average-challan-per-truck", async (req, res) => {
     try {
         // Fetch all challans with truck details
@@ -469,9 +465,6 @@ app.get("/challans-by-state-city", async (req, res) => {
         res.status(500).json({ success: false, message: "Internal Server Error" });
     }
 });
-
-
-
 app.get("/challans-by-month", async (req, res) => {
     try {
         // Fetch all challans with date
@@ -607,6 +600,7 @@ app.get("/repeat-offenders", async (req, res) => {
         });
     }
 });
+//@ts-ignore
 app.get("/challans-by-vehicle/:rc_number", async (req, res) => {
     try {
         const { rc_number } = req.params;
