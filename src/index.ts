@@ -92,9 +92,6 @@ async function importExcelData() {
         // }
         // // await prisma.challan.deleteMany();
 
-
-
-
         // const value=excelSerialToJSDate(45620)
         // console.log(value)
         console.log("✅ Data successfully imported!");

@@ -1,0 +1,14 @@
+ for all pending challans   /pending-challans
+ for online pending challans   /online-offline-pending-fines
+ for total pending fines   /total-pending-fines-sum
+ for highest challan lowest challan   /higest-challan-lowest-challan
+ for topstates with most challans   /topstates-with-most-challans
+ for peak violation months   /peak-violation-months
+ for drivers by challan top 5   /drivers-by-challan-top-5
+ for average challan per truck   /average-challan-per-truck
+ for challans by state city   /challans-by-state-city
+ for challans by month   /challans-by-month
+ for pending duration analysis   /pending-duration-analysis
+ for repeat offenders   /repeat-offenders   
+ for challans by vehicle   /challans-by-vehicle/:rc_number
+ for pending challan percentage   /challan-pending-percentage

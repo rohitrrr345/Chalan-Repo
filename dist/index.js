@@ -131,7 +131,7 @@ function importExcelData() {
     });
 }
 // Run the function
-importExcelData();
+// importExcelData();
 app.get("/pending-challans", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const pendingChallans = yield prisma.challan.findMany({
