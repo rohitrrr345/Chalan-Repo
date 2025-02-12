@@ -607,6 +607,41 @@ app.get("/challans-by-vehicle/:rc_number", (req, res) => __awaiter(void 0, void 
         });
     }
 }));
+app.get("/challan-pending-percentage", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        // Fetch total pending challans
+        const totalPending = yield prisma.challan.count({
+            where: { challan_status: "Pending" }
+        });
+        // Fetch pending court challans
+        const courtPending = yield prisma.challan.count({
+            where: { challan_status: "Pending", court_challan: true }
+        });
+        // Fetch pending online challans
+        const onlinePending = totalPending - courtPending;
+        // Calculate percentages
+        const courtPercentage = totalPending ? (courtPending / totalPending) * 100 : 0;
+        const onlinePercentage = totalPending ? (onlinePending / totalPending) * 100 : 0;
+        const result = {
+            total_pending_challans: totalPending,
+            court_challan_pending: courtPending,
+            online_challan_pending: onlinePending,
+            court_challan_percentage: parseFloat(courtPercentage.toFixed(2)),
+            online_challan_percentage: parseFloat(onlinePercentage.toFixed(2))
+        };
+        res.json({
+            success: true,
+            data: result
+        });
+    }
+    catch (error) {
+        res.status(500).json({
+            success: false,
+            message: "Error fetching pending challan percentage",
+            error
+        });
+    }
+}));
 app.listen(3000, () => {
     console.log(`Server is running on port ${3000}`);
 });

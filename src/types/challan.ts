@@ -37,3 +37,11 @@ export interface RepeatOffender {
   amount: number;
   challan_status: string;
 }
+
+export interface PendingChallanStats {
+  total_pending_challans: number;
+  court_challan_pending: number;
+  online_challan_pending: number;
+  court_challan_percentage: number;
+  online_challan_percentage: number;
+}

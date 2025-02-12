@@ -5,7 +5,7 @@ import express from "express"
 // Load environment variables
 // dotenv.config();
 import path from "path";
-import { ChallanByMonth, PendingChallan, RepeatOffender, TruckAverage, TruckChallan } from "./types/challan";
+import { ChallanByMonth, PendingChallan, PendingChallanStats, RepeatOffender, TruckAverage, TruckChallan } from "./types/challan";
 const app=express()
 //@ts-ignore
 
@@ -638,7 +638,45 @@ app.get("/challans-by-vehicle/:rc_number", async (req, res) => {
         });
     }
 });
+app.get("/challan-pending-percentage", async (req, res) => {
+    try {
+        // Fetch total pending challans
+        const totalPending = await prisma.challan.count({
+            where: { challan_status: "Pending" }
+        });
 
+        // Fetch pending court challans
+        const courtPending = await prisma.challan.count({
+            where: { challan_status: "Pending", court_challan: true }
+        });
+
+        // Fetch pending online challans
+        const onlinePending = totalPending - courtPending;
+
+        // Calculate percentages
+        const courtPercentage = totalPending ? (courtPending / totalPending) * 100 : 0;
+        const onlinePercentage = totalPending ? (onlinePending / totalPending) * 100 : 0;
+
+        const result: PendingChallanStats = {
+            total_pending_challans: totalPending,
+            court_challan_pending: courtPending,
+            online_challan_pending: onlinePending,
+            court_challan_percentage: parseFloat(courtPercentage.toFixed(2)),
+            online_challan_percentage: parseFloat(onlinePercentage.toFixed(2))
+        };
+
+        res.json({
+            success: true,
+            data: result
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: "Error fetching pending challan percentage",
+            error
+        });
+    }
+});
 
 app.listen(3000, () => {
     console.log(`Server is running on port ${3000}`);
