@@ -45,3 +45,10 @@ export interface PendingChallanStats {
   court_challan_percentage: number;
   online_challan_percentage: number;
 }
+
+   export interface myType  {
+  challan_date?: {
+      gte: Date;
+      lte: Date;
+  };
+};
