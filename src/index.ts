@@ -5,7 +5,7 @@ import multer from "multer"
 
 import path from "path";
 import { ChallanByMonth, PendingChallan, PendingChallanStats, RepeatOffender, TruckAverage, TruckChallan } from "./types/challan";
-import { excelSerialToJSDate, excelSerialToJSDateTime } from "./helpers/helpers";
+import { excelSerialToJSDate, excelSerialToJSDateTime, extractCity } from "./helpers/helpers";
 const app = express()
 const prisma = new PrismaClient();
 const upload = multer({ storage: multer.memoryStorage() });
@@ -143,8 +143,13 @@ app.get("/analytics", async (req, res) => {
             prisma.challan.findFirst({ orderBy: { amount: "asc" } }),
             prisma.challan.groupBy({ by: ["state"], _count: { id: true }, orderBy: { _count: { id: "desc" } }, take: 5 }),
             prisma.challan.groupBy({ by: ["challan_date"], _count: { id: true }, orderBy: { _count: { id: "desc" } } }),
-            prisma.challan.groupBy({ by: ["rc_number", "accused_name"], _sum: { amount: true }, orderBy: { _sum: { amount: "desc" } }, take: 5 }),
-            prisma.challan.findMany({ select: { rc_number: true, amount: true } }), // Fetch data for Average Challan Per Truck
+            prisma.challan.groupBy({
+                by: ["rc_number", "accused_name"],
+                _sum: { amount: true },
+                where: { amount: { not: null } },  // Exclude null amounts
+                orderBy: { _sum: { amount: "desc" } },
+                take: 5
+            }),            prisma.challan.findMany({ select: { rc_number: true, amount: true } }), // Fetch data for Average Challan Per Truck
             prisma.challan.groupBy({ by: ["state", "challan_place"], _count: { id: true }, orderBy: { _count: { id: "desc" } } }),
             prisma.challan.findMany({ select: { challan_date: true } }),
             prisma.challan.findMany({ where: { challan_status: "Pending" }, select: { rc_number: true, accused_name: true, challan_number: true, challan_date: true } }),
@@ -162,7 +167,7 @@ app.get("/analytics", async (req, res) => {
         ]);
         const violationHotspots = challansByStateCity.map(entry => ({
             state: entry.state ?? "Unknown", // Handle null state values
-            city: entry.challan_place ?? "Unknown", // Handle null city values
+            city:  extractCity(entry.challan_place ?? "Unknown"), // Handle null city values
             total_challans: entry._count.id
            }));
         const today = new Date();
@@ -255,7 +260,7 @@ uniqueVehiclesByStatus.forEach(entry => {
             "Amount": `₹${totalAmount.toLocaleString()}`
         });
 
-        console.log(challanStatusData)
+        console.log(topDriversByChallanValue)
         
       
         res.json({
@@ -274,10 +279,10 @@ uniqueVehiclesByStatus.forEach(entry => {
                 lowest_challan: lowestChallan || null,
                 top_states_with_most_challans: topStates.map(state => ({ state: state.state, total_challans: state._count.id })),
                 peak_violation_months: sortedPeakViolations,
-                top_drivers_by_challan_value: topDriversByChallanValue.map(driver => ({
+                top_drivers_by_challan_amount_value: topDriversByChallanValue.map(driver => ({
                     rc_number: driver.rc_number,
                     accused_name: driver.accused_name,
-                    total_challan_value: driver._sum.amount || 0
+                    total_challan_amount_value: driver._sum.amount || 0
                 })),
                 pending_duration_analysis: pendingDurationData,
                 repeat_offenders: repeatOffenders.map(offender => ({

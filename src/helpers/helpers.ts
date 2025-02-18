@@ -63,3 +63,27 @@ export function excelSerialToJSDateTime(serial:number) {
 
     return formattedDate;
 }
+  export function extractCity(place:string) {
+    if (!place || typeof place !== "string") return "Unknown"; // Handle null or invalid values
+
+    // Trim whitespace and convert to proper case
+    place = place.trim();
+
+    // Common delimiters found in place names
+    const delimiters = [",", "|", "-", "—", "/"];  
+
+    // Replace multiple delimiters with a single comma
+    delimiters.forEach(delim => {
+        place = place.replace(new RegExp(`\\${delim}`, "g"), ",");
+    });
+
+    // Split place into parts
+    const parts = place.split(",").map(part => part.trim());
+
+    // Ensure first valid word is a city name
+    if (parts.length > 0 && /^[A-Za-z\s]+$/.test(parts[0])) {
+        return parts[0]; // Return first meaningful word as city
+    }
+
+    return place; // Fallback if no valid city found
+}

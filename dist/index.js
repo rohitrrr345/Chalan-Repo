@@ -141,8 +141,13 @@ app.get("/analytics", (req, res) => __awaiter(void 0, void 0, void 0, function* 
             prisma.challan.findFirst({ orderBy: { amount: "asc" } }),
             prisma.challan.groupBy({ by: ["state"], _count: { id: true }, orderBy: { _count: { id: "desc" } }, take: 5 }),
             prisma.challan.groupBy({ by: ["challan_date"], _count: { id: true }, orderBy: { _count: { id: "desc" } } }),
-            prisma.challan.groupBy({ by: ["rc_number", "accused_name"], _sum: { amount: true }, orderBy: { _sum: { amount: "desc" } }, take: 5 }),
-            prisma.challan.findMany({ select: { rc_number: true, amount: true } }), // Fetch data for Average Challan Per Truck
+            prisma.challan.groupBy({
+                by: ["rc_number", "accused_name"],
+                _sum: { amount: true },
+                where: { amount: { not: null } }, // Exclude null amounts
+                orderBy: { _sum: { amount: "desc" } },
+                take: 5
+            }), prisma.challan.findMany({ select: { rc_number: true, amount: true } }), // Fetch data for Average Challan Per Truck
             prisma.challan.groupBy({ by: ["state", "challan_place"], _count: { id: true }, orderBy: { _count: { id: "desc" } } }),
             prisma.challan.findMany({ select: { challan_date: true } }),
             prisma.challan.findMany({ where: { challan_status: "Pending" }, select: { rc_number: true, accused_name: true, challan_number: true, challan_date: true } }),
@@ -162,7 +167,7 @@ app.get("/analytics", (req, res) => __awaiter(void 0, void 0, void 0, function* 
             var _a, _b;
             return ({
                 state: (_a = entry.state) !== null && _a !== void 0 ? _a : "Unknown", // Handle null state values
-                city: (_b = entry.challan_place) !== null && _b !== void 0 ? _b : "Unknown", // Handle null city values
+                city: (0, helpers_1.extractCity)((_b = entry.challan_place) !== null && _b !== void 0 ? _b : "Unknown"), // Handle null city values
                 total_challans: entry._count.id
             });
         });
@@ -240,7 +245,7 @@ app.get("/analytics", (req, res) => __awaiter(void 0, void 0, void 0, function* 
             "No of Challan": totalChallans,
             "Amount": `₹${totalAmount.toLocaleString()}`
         });
-        console.log(challanStatusData);
+        console.log(topDriversByChallanValue);
         res.json({
             success: true,
             data: {
@@ -257,10 +262,10 @@ app.get("/analytics", (req, res) => __awaiter(void 0, void 0, void 0, function* 
                 lowest_challan: lowestChallan || null,
                 top_states_with_most_challans: topStates.map(state => ({ state: state.state, total_challans: state._count.id })),
                 peak_violation_months: sortedPeakViolations,
-                top_drivers_by_challan_value: topDriversByChallanValue.map(driver => ({
+                top_drivers_by_challan_amount_value: topDriversByChallanValue.map(driver => ({
                     rc_number: driver.rc_number,
                     accused_name: driver.accused_name,
-                    total_challan_value: driver._sum.amount || 0
+                    total_challan_amount_value: driver._sum.amount || 0
                 })),
                 pending_duration_analysis: pendingDurationData,
                 repeat_offenders: repeatOffenders.map(offender => ({
