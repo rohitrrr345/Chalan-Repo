@@ -58,7 +58,7 @@ app.post("/upload-file", upload.single("file"), async (req, res): Promise<void> 
     try {
         // ✅ Delete existing data before inserting new data
         await prisma.challan.deleteMany();
-        console.log("✅ Data successfully deleted!");
+        console.log(" Data successfully deleted!");
 
         if (!req.file) {
              res.status(400).json({ success: false, message: "No file uploaded." });
@@ -72,7 +72,7 @@ app.post("/upload-file", upload.single("file"), async (req, res): Promise<void> 
         const jsonData: ChallanEntry[] = XLSX.utils.sheet_to_json(sheet);
 
 
-        console.log(`✅ Processing ${jsonData.length} records...`);
+        console.log(` Processing ${jsonData.length} records...`);
 
         // ✅ Format Data Before Bulk Insert
         const formattedEntries = jsonData.map(entry => ({
@@ -100,7 +100,7 @@ app.post("/upload-file", upload.single("file"), async (req, res): Promise<void> 
             skipDuplicates: true // Prevents duplicate errors
         });
 
-        console.log(`✅ Successfully inserted ${formattedEntries.length} records!`);
+        console.log(` Successfully inserted ${formattedEntries.length} records!`);
 
         res.json({ success: true, message: "Data successfully imported!", totalRecords: formattedEntries.length });
 
@@ -109,9 +109,6 @@ app.post("/upload-file", upload.single("file"), async (req, res): Promise<void> 
         res.status(500).json({ success: false, message: "Error processing file", error });
     }
 });
-
-
-
 
 app.get("/analytics", async (req, res) => {
     try {
@@ -135,7 +132,7 @@ app.get("/analytics", async (req, res) => {
             overallChallanStatus,
             uniqueVehiclesByStatus
         ] = await Promise.all([
-            prisma.challan.findMany({ where: { challan_status: "Pending" } }),
+            prisma.challan.findMany({ where: { challan_status: "Pending" } }),//const item
             prisma.challan.aggregate({ _sum: { amount: true }, where: { challan_status: "Pending", court_challan: true } }),
             prisma.challan.aggregate({ _sum: { amount: true }, where: { challan_status: "Pending", court_challan: false } }),
             prisma.challan.aggregate({ _sum: { amount: true }, where: { challan_status: "Pending" } }),
@@ -215,11 +212,6 @@ app.get("/analytics", async (req, res) => {
                 average_challan_amount: Math.floor(data.totalAmount / data.count)
             }))
             .sort((a, b) => b.average_challan_amount - a.average_challan_amount);
-
-
-
-
-
 
             const vehicleCountMap: Record<string, number> = {};
 uniqueVehiclesByStatus.forEach(entry => {
@@ -314,13 +306,7 @@ uniqueVehiclesByStatus.forEach(entry => {
         });
     }
 });
-
-
-
-
-
 app.listen(4000, () => {
     console.log(`Server is running on port ${4000}`);
 });
-
 module.exports = app;
