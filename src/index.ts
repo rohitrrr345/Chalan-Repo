@@ -190,7 +190,7 @@ app.get("/analytics", async (req, res) => {
         const peakViolationData: Record<string, number> = {};
         peakViolationMonths.forEach(challan => {
             //@ts-ignore
-            const monthYear = new Date(challan.challan_date).toLocaleString("en-US", { month: "long", year: "numeric" });
+            const monthYear = new Date(challan.challan_date)?.toLocaleString("en-US", { month: "long", year: "numeric" });
             if (!peakViolationData[monthYear]) peakViolationData[monthYear] = 0;
             peakViolationData[monthYear] += challan._count.id;
         });
@@ -369,7 +369,7 @@ app.get("/analyticsSheet", async (req, res) => {
       
 
         addSheet("Overall Challan Status", ["Status", "Unique Vehicle Count", "No of Challan", "Amount"],//@ts-ignore
-            overallChallanStatus.map(status => [status.challan_status, status._count.id, status._count.id, `₹${status._sum.amount.toLocaleString()}`])
+            overallChallanStatus.map(status => [status.challan_status, status._count.id, status._count.id, `₹${status?._sum?.amount?.toLocaleString()}`])
         );
 
         addSheet("Pending Challan %", ["Type", "Value"], [
