@@ -1,37 +1,4 @@
 "use strict";
-var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    var desc = Object.getOwnPropertyDescriptor(m, k);
-    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
-      desc = { enumerable: true, get: function() { return m[k]; } };
-    }
-    Object.defineProperty(o, k2, desc);
-}) : (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    o[k2] = m[k];
-}));
-var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
-    Object.defineProperty(o, "default", { enumerable: true, value: v });
-}) : function(o, v) {
-    o["default"] = v;
-});
-var __importStar = (this && this.__importStar) || (function () {
-    var ownKeys = function(o) {
-        ownKeys = Object.getOwnPropertyNames || function (o) {
-            var ar = [];
-            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
-            return ar;
-        };
-        return ownKeys(o);
-    };
-    return function (mod) {
-        if (mod && mod.__esModule) return mod;
-        var result = {};
-        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
-        __setModuleDefault(result, mod);
-        return result;
-    };
-})();
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
@@ -46,8 +13,8 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const client_1 = require("@prisma/client");
-const XLSX = __importStar(require("XLSX"));
 const express_1 = __importDefault(require("express"));
+const xlsx = require("xlsx");
 const multer_1 = __importDefault(require("multer"));
 const path_1 = __importDefault(require("path"));
 const fs_1 = __importDefault(require("fs"));
@@ -91,10 +58,10 @@ app.post("/upload-file", upload.single("file"), (req, res) => __awaiter(void 0, 
             return;
         }
         // ✅ Read Excel file from buffer
-        const workbook = XLSX.read(req.file.buffer, { type: "buffer" });
+        const workbook = xlsx.read(req.file.buffer, { type: "buffer" });
         const sheetName = workbook.SheetNames[2]; // Ensure correct sheet is selected
         const sheet = workbook.Sheets[sheetName];
-        const jsonData = XLSX.utils.sheet_to_json(sheet);
+        const jsonData = xlsx.utils.sheet_to_json(sheet);
         console.log(` Processing ${jsonData.length} records...`);
         // ✅ Format Data Before Bulk Insert
         const formattedEntries = jsonData.map(entry => {
@@ -300,260 +267,6 @@ app.get("/analytics", (req, res) => __awaiter(void 0, void 0, void 0, function* 
         });
     }
 }));
-// app.get("/analyticsSheet", async (req, res) => {
-//     try {
-//         // ✅ Fetch Data from Database
-//         const [
-//             courtPending,
-//             onlinePending,
-//             highestChallan,
-//             lowestChallan,
-//             topStates,
-//             pendingDurationAnalysis,
-//             overallChallanStatus,
-//             violationHotspots,
-//             averageChallanPerTruckData
-//         ] = await Promise.all([
-//             prisma.challan.aggregate({ _sum: { amount: true }, where: { challan_status: "Pending", court_challan: true } }),
-//             prisma.challan.aggregate({ _sum: { amount: true }, where: { challan_status: "Pending", court_challan: false } }),
-//             prisma.challan.findFirst({ orderBy: { amount: "desc" } }),
-//             prisma.challan.findFirst({ orderBy: { amount: "asc" } }),
-//             prisma.challan.groupBy({ by: ["state"], _count: { id: true }, orderBy: { _count: { id: "desc" } }, take: 5 }),
-//             prisma.challan.findMany({ where: { challan_status: "Pending" }, select: { rc_number: true, accused_name: true, challan_number: true, challan_date: true } }),
-//             prisma.challan.groupBy({ by: ["challan_status"], _count: { id: true }, _sum: { amount: true }, orderBy: { _sum: { amount: "desc" } }, take: 5 }),
-//             prisma.challan.groupBy({ by: ["state", "challan_place"], _count: { id: true }, orderBy: { _count: { id: "desc" } }, take: 5 }),
-//              prisma.challan.groupBy({
-//                 by: ["rc_number"],   // Group by truck RC number
-//                 _avg: { amount: true },  // Calculate average challan amount
-//                 _count: { id: true },  // Count total challans per truck
-//                 orderBy: { _avg: { amount: "desc" } },  // Sort by highest average
-//                 take: 5  // Limit to top 5 trucks
-//             })]);
-//         const today = new Date();
-//         // ✅ Pending Duration Analysis (Sorted, Top 5)
-//         const pendingDurationData = pendingDurationAnalysis
-//             .map(challan => ({
-//                 rc_number: challan.rc_number,
-//                 accused_name: challan.accused_name,
-//                 challan_number: challan.challan_number,
-//                 challan_date: challan.challan_date,
-//                 days_pending: challan.challan_date
-//                     ? Math.floor((today.getTime() - new Date(challan.challan_date).getTime()) / (1000 * 60 * 60 * 24))
-//                     : 0
-//             }))
-//             .sort((a, b) => b.days_pending - a.days_pending)
-//             .slice(0, 5); // Take only top 5
-//         // ✅ Pending Challan Amount Calculation
-//         const courtPendingAmount = courtPending._sum.amount || 0;
-//         const onlinePendingAmount = onlinePending._sum.amount || 0;
-//         const totalPendingAmountValue = courtPendingAmount + onlinePendingAmount;
-//         // ✅ Calculate Pending Challan Percentage
-//         const courtPercentage = totalPendingAmountValue ? (courtPendingAmount / totalPendingAmountValue) * 100 : 0;
-//         const onlinePercentage = totalPendingAmountValue ? (onlinePendingAmount / totalPendingAmountValue) * 100 : 0;
-//         const pendingChallanPercentage = [
-//             ["Total Pending Challans", totalPendingAmountValue],
-//             ["Court Challan Pending", courtPendingAmount],
-//             ["Online Challan Pending", onlinePendingAmount],
-//             ["Court Challan Percentage", `${courtPercentage.toFixed(2)}%`],
-//             ["Online Challan Percentage", `${onlinePercentage.toFixed(2)}%`]
-//         ];
-//         // ✅ Extract Top 5 States with Most Challans
-//         const topStatesData = topStates.map(state => ({
-//             state: state.state,
-//             total_challans: state._count.id
-//         }));
-//         const truckTotals = {};//@ts-ignore
-//         averageChallanPerTruckData.forEach(({ rc_number, amount }) => {
-//             if (!rc_number || !amount) return;//@ts-ignore
-//             if (!truckTotals[rc_number]) truckTotals[rc_number] = { totalAmount: 0, count: 0 };
-//             //@ts-ignore
-//             truckTotals[rc_number].totalAmount += amount;
-//             //@ts-ignore
-//             truckTotals[rc_number].count += 1;
-//         });
-//         const averageChallanPerTruck = Object.entries(truckTotals)
-//             .map(([rc_number, data]) => ({
-//                 rc_number,//@ts-ignore
-//                 average_challan_amount: Math.floor(data.totalAmount / data.count)
-//             }))
-//             .sort((a, b) => b.average_challan_amount - a.average_challan_amount)
-//             .slice(0, 5); // Take top 5 trucks
-//         // ✅ Extract Overall Challan Status (Top 5)
-//         const challanStatusData = overallChallanStatus.map(status => ({
-//             Status: status.challan_status,
-//             "Unique Vehicle Count": status._count.id,
-//             "No of Challan": status._count.id,//@ts-ignore
-//             "Amount": `₹${status._sum.amount.toLocaleString()}`
-//         }));
-//         // ✅ Extract Top 5 Violation Hotspots
-//         const violationHotspotsData = violationHotspots.map(entry => ({
-//             state: entry.state ?? "Unknown",
-//             city: entry.challan_place ?? "Unknown",
-//             total_challans: entry._count.id
-//         }));
-//         // ✅ Prepare Data for Excel
-//         const workbook = XLSX.utils.book_new();
-//        //@ts-ignore
-//         function addSheet(sheetName, headers, data) {
-//             const worksheet = XLSX.utils.aoa_to_sheet([headers, ...data.map(Object.values)]);
-//             worksheet["!cols"] = headers.map(() => ({ wch: 20 })); // Auto column width
-//             XLSX.utils.book_append_sheet(workbook, worksheet, sheetName.substring(0, 31)); // Ensure sheet name is within 31 chars
-//         }
-//         // ✅ Add Sheets with Data
-//         addSheet("Pending Fines", ["Type", "Amount"], [
-//             ["Court", courtPendingAmount],
-//             ["Online", onlinePendingAmount],
-//             ["Total", totalPendingAmountValue]
-//         ]);
-//         addSheet("Top 5 States", ["State", "Total Challans"], topStatesData);
-//         addSheet("Pending Duration", ["RC Number", "Accused Name", "Challan Number", "Challan Date", "Days Pending"], pendingDurationData);
-//         addSheet("Overall Challan Status", ["Status", "Unique Vehicle Count", "No of Challan", "Amount"], challanStatusData);
-//         addSheet("Pending Challan %", ["Type", "Value"], pendingChallanPercentage);
-//         addSheet("Violation Hotspots", ["State", "City", "Total Challans"], violationHotspotsData);
-//         addSheet("Avg Challan Per Truck", ["RC Number", "Avg Challan Amount"], averageChallanPerTruck);
-//         // ✅ Save File
-//         const filePath = path.join(__dirname, "Challan_Report.xlsx");
-//         XLSX.writeFile(workbook, filePath);
-//         // ✅ Send JSON Response + Excel File as Download
-//         res.download(filePath, "Challan_Report.xlsx", (err) => {
-//             if (err) {
-//                 console.error("File Download Error:", err);
-//                 res.status(500).json({ success: false, message: "Error generating Excel file" });
-//             }
-//             // Delete file after sending
-//             fs.unlinkSync(filePath);
-//         });
-//     } catch (error) {
-//         console.error(error);
-//         res.status(500).json({ success: false, message: "Error fetching analytics data", error });
-//     }
-// });
-// app.get("/analyticsSheet", async (req, res) => {
-//     try {
-//         // ✅ Fetch Data from Database
-//         const [
-//             courtPending,
-//             onlinePending,
-//             highestChallan,
-//             lowestChallan,
-//             topStates,
-//             pendingDurationAnalysis,
-//             overallChallanStatus,
-//             violationHotspots,
-//             averageChallanPerTruckData
-//         ] = await Promise.all([
-//             prisma.challan.aggregate({ _sum: { amount: true }, where: { challan_status: "Pending", court_challan: true } }),
-//             prisma.challan.aggregate({ _sum: { amount: true }, where: { challan_status: "Pending", court_challan: false } }),
-//             prisma.challan.findFirst({ orderBy: { amount: "desc" } }),
-//             prisma.challan.findFirst({ orderBy: { amount: "asc" } }),
-//             prisma.challan.groupBy({ by: ["state"], _count: { id: true }, orderBy: { _count: { id: "desc" } }, take: 5 }),
-//             prisma.challan.findMany({ where: { challan_status: "Pending" }, select: { rc_number: true, accused_name: true, challan_number: true, challan_date: true } }),
-//             prisma.challan.groupBy({ by: ["challan_status"], _count: { id: true }, _sum: { amount: true }, orderBy: { _sum: { amount: "desc" } }, take: 5 }),
-//             prisma.challan.groupBy({ by: ["state", "challan_place"], _count: { id: true }, orderBy: { _count: { id: "desc" } }, take: 5 }),
-//             prisma.challan.findMany({ select: { rc_number: true, amount: true } }) // Data for Average Challan Per Truck
-//         ]);
-//         const today = new Date();
-//         // ✅ Pending Duration Analysis (Sorted, Top 5)
-//         const pendingDurationData = pendingDurationAnalysis
-//             .map(challan => ({
-//                 rc_number: challan.rc_number,
-//                 accused_name: challan.accused_name,
-//                 challan_number: challan.challan_number,
-//                 challan_date: challan.challan_date,
-//                 days_pending: challan.challan_date
-//                     ? Math.floor((today.getTime() - new Date(challan.challan_date).getTime()) / (1000 * 60 * 60 * 24))
-//                     : 0
-//             }))
-//             .sort((a, b) => b.days_pending - a.days_pending)
-//             .slice(0, 5); // Take only top 5
-//         // ✅ Pending Challan Amount Calculation
-//         const courtPendingAmount = courtPending._sum.amount || 0;
-//         const onlinePendingAmount = onlinePending._sum.amount || 0;
-//         const totalPendingAmountValue = courtPendingAmount + onlinePendingAmount;
-//         // ✅ Calculate Pending Challan Percentage
-//         const courtPercentage = totalPendingAmountValue ? (courtPendingAmount / totalPendingAmountValue) * 100 : 0;
-//         const onlinePercentage = totalPendingAmountValue ? (onlinePendingAmount / totalPendingAmountValue) * 100 : 0;
-//         const pendingChallanPercentage = [
-//             ["Total Pending Challans", totalPendingAmountValue],
-//             ["Court Challan Pending", courtPendingAmount],
-//             ["Online Challan Pending", onlinePendingAmount],
-//             ["Court Challan Percentage", `${courtPercentage.toFixed(2)}%`],
-//             ["Online Challan Percentage", `${onlinePercentage.toFixed(2)}%`]
-//         ];
-//         // ✅ Extract Top 5 States with Most Challans
-//         const topStatesData = topStates.map(state => ({
-//             state: state.state,
-//             total_challans: state._count.id
-//         }));
-//         // ✅ Extract Overall Challan Status (Top 5)
-//         const challanStatusData = overallChallanStatus.map(status => ({
-//             Status: status.challan_status,
-//             "Unique Vehicle Count": status._count.id,
-//             "No of Challan": status._count.id,//@ts-ignore
-//             "Amount": `₹${status._sum.amount.toLocaleString()}`
-//         }));
-//         // ✅ Extract Top 5 Violation Hotspots
-//         const violationHotspotsData = violationHotspots.map(entry => ({
-//             state: entry.state ?? "Unknown",
-//             city: entry.challan_place ?? "Unknown",
-//             total_challans: entry._count.id
-//         }));
-//         // ✅ Compute Average Challan Per Truck (Top 5)
-//         const truckTotals = {};
-//         averageChallanPerTruckData.forEach(({ rc_number, amount }) => {
-//             if (!rc_number || !amount) return;//@ts-ignore
-//             if (!truckTotals[rc_number]) truckTotals[rc_number] = { totalAmount: 0, count: 0 };
-//             //@ts-ignore
-//             truckTotals[rc_number].totalAmount += amount;
-//             //@ts-ignore
-//             truckTotals[rc_number].count += 1;
-//         });
-//         const averageChallanPerTruck = Object.entries(truckTotals)
-//             .map(([rc_number, data]) => ({
-//                 rc_number,//@ts-ignore
-//                 average_challan_amount: Math.floor(data.totalAmount / data.count)
-//             }))
-//             .sort((a, b) => b.average_challan_amount - a.average_challan_amount)
-//             .slice(0, 5); // Take top 5 trucks
-//         //@ts-ignore
-//         const workbook = XLSX.utils.book_new();
-// //@ts-ignore
-//         function addSheet(sheetName, headers, data) {
-//             //@ts-ignore
-//             const worksheet = XLSX.utils.aoa_to_sheet([headers, ...data.map(Object.values)]);
-//             worksheet["!cols"] = headers.map(() => ({ wch: 20 })); // Auto column width
-//             //@ts-ignore
-//             XLSX.utils.book_append_sheet(workbook, worksheet, sheetName.substring(0, 31)); // Ensure sheet name is within 31 chars
-//         }
-//         // ✅ Add Sheets with Data
-//         addSheet("Pending Fines", ["Type", "Amount"], [
-//             ["Court", courtPendingAmount],
-//             ["Online", onlinePendingAmount],
-//             ["Total", totalPendingAmountValue]
-//         ]);
-//         addSheet("Top 5 States", ["State", "Total Challans"], topStatesData);
-//         addSheet("Pending Duration", ["RC Number", "Accused Name", "Challan Number", "Challan Date", "Days Pending"], pendingDurationData);
-//         addSheet("Overall Challan Status", ["Status", "Unique Vehicle Count", "No of Challan", "Amount"], challanStatusData);
-//         addSheet("Pending Challan %", ["Type", "Value"], pendingChallanPercentage);
-//         addSheet("Violation Hotspots", ["State", "City", "Total Challans"], violationHotspotsData);
-//         addSheet("Avg Challan Per Truck", ["RC Number", "Avg Challan Amount"], averageChallanPerTruck);
-//         // ✅ Save File
-//         const filePath = path.join(__dirname, "Challan_Report.xlsx");
-//         XLSX.writeFile(workbook, filePath);
-//         // ✅ Send JSON Response + Excel File as Download
-//         res.download(filePath, "Challan_Report.xlsx", (err) => {
-//             if (err) {
-//                 console.error("File Download Error:", err);
-//                 res.status(500).json({ success: false, message: "Error generating Excel file" });
-//             }
-//             // Delete file after sending
-//             fs.unlinkSync(filePath);
-//         });
-//     } catch (error) {
-//         console.error(error);
-//         res.status(500).json({ success: false, message: "Error fetching analytics data", error });
-//     }
-// });
 app.get("/analyticsSheet", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         // ✅ Fetch Data from Database
@@ -581,12 +294,12 @@ app.get("/analyticsSheet", (req, res) => __awaiter(void 0, void 0, void 0, funct
             total_challans: offender._count.id
         }));
         // ✅ Prepare Data for Excel
-        const workbook = XLSX.utils.book_new();
+        const workbook = xlsx.utils.book_new();
         //@ts-ignore
         function addSheet(sheetName, headers, data) {
-            const worksheet = XLSX.utils.aoa_to_sheet([headers, ...data.map(Object.values)]);
+            const worksheet = xlsx.utils.aoa_to_sheet([headers, ...data.map(Object.values)]);
             worksheet["!cols"] = headers.map(() => ({ wch: 20 })); // Auto column width
-            XLSX.utils.book_append_sheet(workbook, worksheet, sheetName.substring(0, 31)); // Ensure sheet name is within 31 chars
+            xlsx.utils.book_append_sheet(workbook, worksheet, sheetName.substring(0, 31)); // Ensure sheet name is within 31 chars
         }
         // ✅ Add Sheets with Data
         addSheet("Pending Fines", ["Type", "Amount"], [
@@ -613,7 +326,7 @@ app.get("/analyticsSheet", (req, res) => __awaiter(void 0, void 0, void 0, funct
         ]));
         // ✅ Save File
         const filePath = path_1.default.join(__dirname, "Challan_Report.xlsx");
-        XLSX.writeFile(workbook, filePath);
+        xlsx.writeFile(workbook, filePath);
         // ✅ Send JSON Response + Excel File as Download
         res.download(filePath, "Challan_Report.xlsx", (err) => {
             if (err) {

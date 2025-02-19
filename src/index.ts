@@ -1,6 +1,7 @@
 import { PrismaClient } from "@prisma/client";
-import * as XLSX from "XLSX";
 import express from "express"
+const xlsx = require("xlsx");
+
 import multer from "multer"
 import path from "path";
 import fs from "fs";
@@ -66,10 +67,10 @@ app.post("/upload-file", upload.single("file"), async (req, res): Promise<void> 
         }
 
         // ✅ Read Excel file from buffer
-        const workbook = XLSX.read(req.file.buffer, { type: "buffer" });
+        const workbook = xlsx.read(req.file.buffer, { type: "buffer" });
         const sheetName = workbook.SheetNames[2]; // Ensure correct sheet is selected
         const sheet = workbook.Sheets[sheetName];
-        const jsonData: ChallanEntry[] = XLSX.utils.sheet_to_json(sheet);
+        const jsonData: ChallanEntry[] = xlsx.utils.sheet_to_json(sheet);
 
 
         console.log(` Processing ${jsonData.length} records...`);
@@ -350,12 +351,12 @@ app.get("/analyticsSheet", async (req, res) => {
         }));
 
         // ✅ Prepare Data for Excel
-        const workbook = XLSX.utils.book_new();
+        const workbook = xlsx.utils.book_new();
 //@ts-ignore
         function addSheet(sheetName, headers, data) {
-            const worksheet = XLSX.utils.aoa_to_sheet([headers, ...data.map(Object.values)]);
+            const worksheet = xlsx.utils.aoa_to_sheet([headers, ...data.map(Object.values)]);
             worksheet["!cols"] = headers.map(() => ({ wch: 20 })); // Auto column width
-            XLSX.utils.book_append_sheet(workbook, worksheet, sheetName.substring(0, 31)); // Ensure sheet name is within 31 chars
+            xlsx.utils.book_append_sheet(workbook, worksheet, sheetName.substring(0, 31)); // Ensure sheet name is within 31 chars
         }
 
         // ✅ Add Sheets with Data
@@ -392,7 +393,7 @@ app.get("/analyticsSheet", async (req, res) => {
 
         // ✅ Save File
         const filePath = path.join(__dirname, "Challan_Report.xlsx");
-        XLSX.writeFile(workbook, filePath);
+        xlsx.writeFile(workbook, filePath);
 
         // ✅ Send JSON Response + Excel File as Download
         res.download(filePath, "Challan_Report.xlsx", (err) => {
