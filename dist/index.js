@@ -59,7 +59,7 @@ app.post("/upload-file", upload.single("file"), (req, res) => __awaiter(void 0, 
         }
         // ✅ Read Excel file from buffer
         const workbook = xlsx.read(req.file.buffer, { type: "buffer" });
-        const sheetName = workbook.SheetNames[2]; // Ensure correct sheet is selected
+        const sheetName = workbook.SheetNames[0]; // Ensure correct sheet is selected
         const sheet = workbook.Sheets[sheetName];
         const jsonData = xlsx.utils.sheet_to_json(sheet);
         console.log(` Processing ${jsonData.length} records...`);

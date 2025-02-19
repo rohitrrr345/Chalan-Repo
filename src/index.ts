@@ -68,7 +68,7 @@ app.post("/upload-file", upload.single("file"), async (req, res): Promise<void> 
 
         // ✅ Read Excel file from buffer
         const workbook = xlsx.read(req.file.buffer, { type: "buffer" });
-        const sheetName = workbook.SheetNames[2]; // Ensure correct sheet is selected
+        const sheetName = workbook.SheetNames[0]; // Ensure correct sheet is selected
         const sheet = workbook.Sheets[sheetName];
         const jsonData: ChallanEntry[] = xlsx.utils.sheet_to_json(sheet);
 
