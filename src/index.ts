@@ -7,9 +7,18 @@ import path from "path";
 import fs from "fs";
 import { ChallanByMonth, PendingChallan, PendingChallanStats, RepeatOffender, TruckAverage, TruckChallan } from "./types/challan";
 import { excelSerialToJSDate, excelSerialToJSDateTime, extractCity } from "./helpers/helpers";
+import { json } from "stream/consumers";
 const app = express()
 const prisma = new PrismaClient();
 const upload = multer({ storage: multer.memoryStorage() });
+
+interface ChallanStatusEntry {
+    month: string;
+    pending: number;
+    in_process: number;
+    disposed: number;
+    not_paid: number;
+}
 
 async function fetchPendingChallans() {
     try {
@@ -57,7 +66,6 @@ app.get("/", async (req, res)=>{
 
 app.post("/upload-file", upload.single("file"), async (req, res): Promise<void> => {
     try {
-        // ✅ Delete existing data before inserting new data
         await prisma.challan.deleteMany();
         console.log(" Data successfully deleted!");
 
@@ -69,13 +77,14 @@ app.post("/upload-file", upload.single("file"), async (req, res): Promise<void> 
         // ✅ Read Excel file from buffer
         const workbook = xlsx.read(req.file.buffer, { type: "buffer" });
         const sheetName = workbook.SheetNames[0]; // Ensure correct sheet is selected
+        console.log(workbook.SheetNames)
         const sheet = workbook.Sheets[sheetName];
         const jsonData: ChallanEntry[] = xlsx.utils.sheet_to_json(sheet);
-
-
         console.log(` Processing ${jsonData.length} records...`);
+        jsonData.forEach((entry, index) => {
+            console.log(entry)
+        })
 
-        // ✅ Format Data Before Bulk Insert
         const formattedEntries = jsonData.map(entry => ({
             rc_number: entry?.rc_number,            
             chassis_number: entry?.chassis_number ? entry.chassis_number.toString() : "null",
@@ -95,7 +104,6 @@ app.post("/upload-file", upload.single("file"), async (req, res): Promise<void> 
             state_name: entry?.state_name?.toString()
         }));
 
-        // ✅ Use `createMany()` for bulk insert
         await prisma.challan.createMany({
             data: formattedEntries,
             skipDuplicates: true // Prevents duplicate errors
@@ -103,7 +111,7 @@ app.post("/upload-file", upload.single("file"), async (req, res): Promise<void> 
 
         console.log(` Successfully inserted ${formattedEntries.length} records!`);
 
-        res.json({ success: true, message: "Data successfully imported!", totalRecords: formattedEntries.length });
+        res.json({ success: true, message: "Data successfully imported!"});
 
     } catch (error) {
         console.error("❌ Error processing file:", error);
@@ -278,7 +286,7 @@ uniqueVehiclesByStatus.forEach(entry => {
                     accused_name: driver.accused_name,
                     total_challan_amount_value: driver._sum.amount || 0
                 })),
-                pending_duration_analysis: pendingDurationData,
+                // pending_duration_analysis: pendingDurationData,
                 repeat_offenders: repeatOffenders.map(offender => ({
                     rc_number: offender.rc_number,
                     accused_name: offender.accused_name,
@@ -323,7 +331,13 @@ app.get("/analyticsSheet", async (req, res) => {
             overallChallanStatus,
             violationHotspots,
             averageChallanPerTruckData,
-            repeatOffenders
+            repeatOffenders,
+            topDriversByChallanValue,
+            peakViolationMonths,
+            challanStatusOverTime,
+            resolutionData
+
+
         ] = await Promise.all([
             prisma.challan.aggregate({ _sum: { amount: true }, where: { challan_status: "Pending", court_challan: true } }),
             prisma.challan.aggregate({ _sum: { amount: true }, where: { challan_status: "Pending", court_challan: false } }),
@@ -333,15 +347,98 @@ app.get("/analyticsSheet", async (req, res) => {
             prisma.challan.findMany({
                 where: { challan_status: "Pending" },
                 select: { rc_number: true, accused_name: true, challan_number: true, challan_date: true },
-                orderBy: { challan_date: "desc" }, // Sort by latest challan date
-                take: 5 // Get only 5 entries
-            }),            prisma.challan.groupBy({ by: ["challan_status"], _count: { id: true }, _sum: { amount: true }, orderBy: { _sum: { amount: "desc" } }, take: 5 }),
+            }),
+            prisma.challan.groupBy({ by: ["challan_status"], _count: { id: true }, _sum: { amount: true }, orderBy: { _sum: { amount: "desc" } }, take: 5 }),
             prisma.challan.groupBy({ by: ["state", "challan_place"], _count: { id: true }, orderBy: { _count: { id: "desc" } }, take: 5 }),
             prisma.challan.groupBy({ by: ["rc_number"], _avg: { amount: true }, _count: { id: true }, orderBy: { _avg: { amount: "desc" } }, take: 5 }),
-            prisma.challan.groupBy({ by: ["rc_number", "accused_name"], _count: { id: true }, having: { id: { _count: { gt: 1 } } }, orderBy: { _count: { id: "desc" } }, take: 5 })
+            prisma.challan.groupBy({ by: ["rc_number", "accused_name"], _count: { id: true }, having: { id: { _count: { gt: 1 } } }, orderBy: { _count: { id: "desc" } }, take: 5 }),
+            prisma.challan.groupBy({
+                by: ["rc_number", "accused_name"],
+                _sum: { amount: true },
+                where: { amount: { not: null } },  // Exclude null amounts
+                orderBy: { _sum: { amount: "desc" } },
+                take: 5
+            }),    
+            prisma.challan.groupBy({ by: ["challan_date"], _count: { id: true }, orderBy: { _count: { id: "desc" } } }),
+            prisma.challan.groupBy({
+                by: ["challan_date", "challan_status"],
+                _count: { id: true },
+                orderBy: { challan_date: "asc" }
+            }),
+            prisma.challan.groupBy({
+                by: ["challan_status", "court_challan"], // Check if it was resolved via Lok Adalat (court)
+                _count: { id: true },
+            })
+
         ]);
 
+
+
         const today = new Date();
+
+        // ✅ Format Pending Duration Analysis (Top 5)
+        const pendingDurationData = pendingDurationAnalysis
+        .map(challan => ({
+            rc_number: challan.rc_number,
+            accused_name: challan.accused_name,
+            challan_number: challan.challan_number,
+            challan_date: challan.challan_date,
+            days_pending: challan.challan_date 
+                ? Math.floor((today.getTime() - new Date(challan.challan_date).getTime()) / (1000 * 60 * 60 * 24)) 
+                : 0
+        }))
+        .sort((a, b) => b.days_pending - a.days_pending) // Sort by max days pending first
+        .slice(0, 5); // Take only the first 5 entries
+    
+        const peakViolationData: Record<string, number> = {};
+        peakViolationMonths.forEach(challan => {
+            //@ts-ignore
+            const monthYear = new Date(challan.challan_date)?.toLocaleString("en-US", { month: "long", year: "numeric" });
+            if (!peakViolationData[monthYear]) peakViolationData[monthYear] = 0;
+            peakViolationData[monthYear] += challan._count.id;
+        });
+
+        const sortedPeakViolations = Object.entries(peakViolationData)
+            .map(([month, totalViolations]) => ({ month, total_violations: totalViolations }))
+            .sort((a, b) => b.total_violations - a.total_violations);
+
+
+            const monthlyData = {};
+            challanStatusOverTime.forEach(entry => {//@ts-ignore
+                const monthYear = new Date(entry.challan_date).toLocaleString("en-US", { month: "long", year: "numeric" });
+    //@ts-ignore
+                if (!monthlyData[monthYear]) {
+                    //@ts-ignore
+                    monthlyData[monthYear] = { 
+                        month: monthYear, 
+                        pending: 0, 
+                        in_process: 0, 
+                        disposed: 0, 
+                        not_paid: 0 
+                    };
+                }
+
+                switch (entry.challan_status) {
+                    case "Pending"://@ts-ignore
+                        monthlyData[monthYear].pending += entry._count.id;
+                        break;
+                    case "In Process"://@ts-ignore
+                        monthlyData[monthYear].in_process += entry._count.id;
+                        break;
+                    case "Disposed"://@ts-ignore
+                        monthlyData[monthYear].disposed += entry._count.id;
+                        break;
+                    case "Not Paid"://@ts-ignore
+                        monthlyData[monthYear].not_paid += entry._count.id;
+                        break;
+                }
+            });
+    
+            const formattedData: ChallanStatusEntry[] = Object.values(monthlyData) as ChallanStatusEntry[];
+        formattedData.sort((a, b) => new Date(a.month as string).getTime() - new Date(b.month as string).getTime());
+        // console.log(formattedData)
+                
+
 
         // ✅ Format Repeat Offenders Data
         const repeatOffendersData = repeatOffenders.map(offender => ({
@@ -349,6 +446,35 @@ app.get("/analyticsSheet", async (req, res) => {
             accused_name: offender.accused_name,
             total_challans: offender._count.id
         }));
+
+        let lokAdalatResolved = 0;
+        let directPaymentResolved = 0;
+        console.log(resolutionData)
+
+        resolutionData.forEach(entry => {
+            if (entry.challan_status === "Disposed") {
+                if (entry.court_challan) {
+                    lokAdalatResolved += entry._count.id;
+                } else {
+                    directPaymentResolved += entry._count.id;
+                }
+            }
+        });
+
+        const totalResolved = lokAdalatResolved + directPaymentResolved;
+        const lokAdalatSuccessRate = totalResolved ? ((lokAdalatResolved / totalResolved) * 100).toFixed(2) : "0";
+        const directPaymentSuccessRate = totalResolved ? ((directPaymentResolved / totalResolved) * 100).toFixed(2) : "0";
+
+        const challanResolutionSuccessRate = [
+            ["Resolution Method", "Challans Resolved", "Success Rate"],
+            ["Lok Adalat", lokAdalatResolved, `${lokAdalatSuccessRate}%`],
+            ["Direct Payment", directPaymentResolved, `${directPaymentSuccessRate}%`],
+            ["Total", totalResolved, "100%"]
+        ];
+
+
+
+
 
         // ✅ Prepare Data for Excel
         const workbook = xlsx.utils.book_new();
@@ -390,6 +516,48 @@ app.get("/analyticsSheet", async (req, res) => {
             offender.accused_name,
             offender.total_challans
         ]));
+        addSheet("Top drivers by challan value", ["rc_number", "Accused Name", "Total Challans amount"],  topDriversByChallanValue.map(driver => ({
+            rc_number: driver.rc_number,
+            accused_name: driver.accused_name,
+            total_challan_amount_value: driver._sum.amount || 0
+        })),);
+
+
+
+
+
+        addSheet("Highest & Lowest Challan", ["Type", "RC Number", "Accused Name", "Challan Number", "Challan Date", "Amount"], [
+            ["Highest", highestChallan?.rc_number, highestChallan?.accused_name, highestChallan?.challan_number, highestChallan?.challan_date, `₹${highestChallan?.amount?.toLocaleString()}`],
+            ["Lowest", lowestChallan?.rc_number, lowestChallan?.accused_name, lowestChallan?.challan_number, lowestChallan?.challan_date, `₹${lowestChallan?.amount?.toLocaleString()}`]
+        ]);
+  
+        addSheet("Resolved vs Pending", ["Month", "Pending Challans", "In Process", "Disposed", "Not Paid"],  
+            formattedData.map(entry => [  // ✅ Remove spread `...`
+                entry.month, 
+                entry.pending, 
+                entry.in_process, 
+                entry.disposed, 
+                entry.not_paid
+            ])
+        );
+        
+
+
+
+
+
+        addSheet("Pending Duration Analysis", ["RC Number", "Accused Name", "Challan Number", "Challan Date", "Days Pending"],
+            pendingDurationData
+        );
+
+        addSheet("Peak Violation months", ["month","total_violations"],
+            sortedPeakViolations
+        );
+
+
+        addSheet("Challan Resolution Success", ["Resolution Method", "Challans Resolved", "Success Rate"], challanResolutionSuccessRate);
+
+
 
         // ✅ Save File
         const filePath = path.join(__dirname, "Challan_Report.xlsx");
